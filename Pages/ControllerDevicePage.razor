@@ -1,0 +1,39 @@
+﻿@page "/ControllerDevice"
+
+@using BlazorTreeView.Shared.Models.Devices
+@using BlazorTreeView.Services
+@using System.Timers
+
+@inject DeviceHierarchyRequestServicecs deviceHierarchyRequestServicecs
+@inject NavigationManager navigationManager
+@inject DeviceHierarchyService deviceHierarchyService
+@inject NotifyerService notifyService
+
+<h3>ControllerDevicePage</h3>
+
+<div class="card">
+	</div>
+	<div class="card-body">
+		<EditForm Model=@deviceHierarchyService.SelectedDevice as ControllerDevice>
+			<div class="form-group mb-3">
+				<label for="MyInputText">Название</label>
+				<InputText @bind-Value=deviceHierarchyService.SelectedDevice.Name id="MyInputText" class="form-control" />
+			</div>
+			<div class="form-group mb-3">
+				<label for="MyInputText">IP-адрес</label>
+				<InputText @bind-Value=@(((ControllerDevice)deviceHierarchyService.SelectedDevice).IpAdress) id="MyInputText" class="form-control" />
+			</div>
+		</EditForm>
+</div>
+<hr />
+
+<button class="btn btn-primary" @onclick="SaveToDbClick">Сохранить</button>
+
+@code
+{
+    private void SaveToDbClick()
+    {
+        deviceHierarchyRequestServicecs.SendHyerarchyAsync(deviceHierarchyService.Devices);
+        notifyService.NotifyHierarchyChanged();
+    }
+}

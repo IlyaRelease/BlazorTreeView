@@ -1,0 +1,120 @@
+﻿@using BlazorTreeView.Shared.Interfaces
+@using BlazorTreeView.Shared
+@using BlazorTreeView.Shared.Models.Devices
+@using BlazorTreeView.Services
+@using Excubo.Blazor.TreeViews
+@using Microsoft.AspNetCore.Components
+@using System.Timers
+@using BlazorTreeView.Converters
+@using Newtonsoft.Json
+@using BlazorContextMenu
+
+@inject NavigationManager navigationManager
+@inject DeviceHierarchyService deviceHierarchyService
+@inject HttpClient HttpClient
+@inject DeviceHierarchyRequestServicecs deviceHierarchyRequestServicecs
+@inject NotifyerService notifyService
+
+
+
+@*@if (deviceHierarchyService.SelectedDevice != null)
+{
+    <p style="color: white">Highlighted item is @deviceHierarchyService.SelectedDevice.Name</p>
+}
+else
+{
+    <p style="color: white">Click on an item</p>
+}*@
+
+@*<input type="text" @bind-value="deviceHierarchyService.SelectedDevice.Name" />*@
+
+@*<button class="btn btn-primary" @onclick="SaveToDbClick">Сохранить</button>*@
+
+@*// TODO make right click change selected item*@
+@*<ContextMenu Id="myMenu">
+    <BlazorContextMenu.Item OnClick="@OnClick">Item 1</BlazorContextMenu.Item>
+    <BlazorContextMenu.Item OnClick="@OnClick">Item 2</BlazorContextMenu.Item>
+    <BlazorContextMenu.Item OnClick="@OnClick" Enabled="false">Item 3 (disabled)</BlazorContextMenu.Item>
+    <Seperator />
+    <BlazorContextMenu.Item>Submenu
+        <SubMenu>
+            <BlazorContextMenu.Item OnClick="@OnClick">Submenu Item 1</BlazorContextMenu.Item>
+            <BlazorContextMenu.Item OnClick="@OnClick">Submenu Item 2</BlazorContextMenu.Item>
+        </SubMenu>
+    </BlazorContextMenu.Item>
+</ContextMenu>
+*@
+@*<ContextMenuTrigger MenuId="myMenu">*@
+<TreeView Items="deviceHierarchyService.Devices" GetChildren="(item) => (item.Childrens)">
+    <ItemTemplate>
+        <div @onclick="() => { 
+                                deviceHierarchyService.SelectedDevice = (deviceHierarchyService.SelectedDevice != context.Item) ? context.Item : null;
+                                navigationManager.NavigateTo(DeviceBaseToURLConverter.Convert(context.Item ));
+                            }"
+            style="color: white; background-color: @(deviceHierarchyService.SelectedDevice == context.Item ? "Highlight" : "inherit")">
+            @context.Item.Name
+        </div>
+    </ItemTemplate>
+</TreeView>
+@*</ContextMenuTrigger>
+*@
+
+<button class="btn btn-primary" @onclick="DelClick" margin-left:10px>Удалить</button>
+<button class="btn btn-primary" @onclick="AddClick" margin-left:10px>Добавить</button>
+
+@code {
+
+    void OnClick(ItemClickEventArgs e)
+    {
+        Console.WriteLine($"Item Clicked => Menu: {e.ContextMenuId}, MenuTarget: {e.ContextMenuTargetId}, IsCanceled: {e.IsCanceled}, MenuItem: {e.MenuItemElement}, MouseEvent: {e.MouseEvent}");
+    }
+
+    protected override async void OnInitialized()
+    {
+        deviceHierarchyService.Devices = await deviceHierarchyRequestServicecs.GetDevicesAsync();
+        InvokeAsync(() => StateHasChanged());
+
+        notifyService.DeviceHierarchyChanged += OnHierarchyChanged;
+    }
+
+    void OnHierarchyChanged()
+    {
+        InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        notifyService.DeviceHierarchyChanged -= OnHierarchyChanged;
+    }
+
+    void DelClick()
+    {
+        deviceHierarchyService.SelectedDevice.Parent.Childrens.Remove(deviceHierarchyService.SelectedDevice);
+        notifyService.NotifyHierarchyChanged();
+    }
+
+    void AddClick()
+    {
+        switch (deviceHierarchyService.SelectedDevice)
+        {
+            case ProjectHierarchy p:
+                p.AddChild(new ControllerDevice() { Name = "ControllerName" });
+                break;
+            case ControllerDevice c:
+                c.AddChild(new Create() { Name = "CrateName" });
+                break;
+            case Create cr:
+                cr.AddChild(new Slot() { Name = "SlotName" });
+                break;
+            case Slot s:
+                break;
+            default:
+                Console.WriteLine("<unknown type>");
+                break;
+            case null:
+                break;
+        }
+
+        notifyService.NotifyHierarchyChanged();
+    }
+}
